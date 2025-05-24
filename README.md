@@ -7,7 +7,7 @@ End-to-End Data Warehouse Project (
 
 Minimum Requirements:
 
-Staging Area
-Datawarehouse
-Streamlit dashboard
+Staging Area <br>
+Datawarehouse <br>
+Streamlit dashboard <br>
 Project repo( add me as collaborator)
