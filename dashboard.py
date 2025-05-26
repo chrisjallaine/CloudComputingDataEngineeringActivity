@@ -76,6 +76,15 @@ def load_data():
         }
         df['CNTRY'] = df['CNTRY'].map(country_map).fillna(df['CNTRY'])
 
+        # Normalize gender values
+        gender_map = {
+            'MALE': 'Male',
+            'M': 'Male',
+            'FEMALE': 'Female',
+            'F': 'Female'
+        }
+        df['GEN'] = df['GEN'].map(lambda x: gender_map.get(str(x).upper(), x))
+
         # Derived columns
         df['customer_age'] = ((datetime.now() - df['birth_date']).dt.days / 365).astype(int)
         df['Revenue'] = df['sls_quantity'] * df['sls_price']
@@ -260,6 +269,18 @@ with tab2:
             
             customer_metrics['segment'] = customer_metrics.apply(get_customer_segment, axis=1)
             
+            # Clean and normalize gender values in customer_metrics
+            customer_metrics['gender'] = (
+                customer_metrics['gender']
+                .astype(str)
+                .str.strip()
+                .str.upper()
+                .map({'MALE': 'Male', 'M': 'Male', 'FEMALE': 'Female', 'F': 'Female'})
+                .fillna('Other')
+            )
+            # Optional: print unique values for debugging
+            print("Unique gender values:", customer_metrics['gender'].unique())
+            
             # 1. Key Customer Insights (moved to top)
             st.subheader("💎 Key Customer Insights")
             col1, col2, col3, col4 = st.columns(4)
@@ -302,38 +323,43 @@ with tab2:
             # 2. Customer Value Distribution Analysis
             st.subheader("Advanced Customer Segmentation Analysis")
             
-            # Customer Journey Heatmap
-            col1, col2 = st.columns(2)
+            # Filter to only Male and Female for plotting
+            filtered_customer_metrics = customer_metrics[customer_metrics['gender'].isin(['Male', 'Female'])]
+            # Customer Value Distribution by Segment
+            fig_violin = px.violin(
+                customer_metrics, 
+                x='segment', 
+                y='total_revenue',
+                box=True,
+                title="Customer Value Distribution by Segment",
+                color='segment',
+                color_discrete_sequence=px.colors.qualitative.Set3
+            )
+            fig_violin.update_xaxes(tickangle=45)
+            fig_violin.update_layout(height=500, showlegend=False)
+            st.plotly_chart(fig_violin, use_container_width=True)
             
-            with col1:
-                # Customer Lifetime Value Distribution by Segment
-                fig_violin = px.violin(
-                    customer_metrics, 
-                    x='segment', 
-                    y='total_revenue',
-                    box=True,
-                    title="Customer Value Distribution by Segment",
-                    color='segment',
-                    color_discrete_sequence=px.colors.qualitative.Set3
-                )
-                fig_violin.update_xaxes(tickangle=45)
-                fig_violin.update_layout(height=500, showlegend=False)
-                st.plotly_chart(fig_violin, use_container_width=True)
-            
-            with col2:
-                # Customer Age vs Revenue Analysis
-                fig_age = px.scatter(
-                    customer_metrics, 
-                    x='age', 
-                    y='total_revenue',
-                    color='gender',
-                    size='total_orders',
-                    title="👥 Age vs Revenue Analysis",
-                    trendline="ols",
-                    hover_data=['segment', 'categories_bought']
-                )
-                fig_age.update_layout(height=500)
-                st.plotly_chart(fig_age, use_container_width=True)
+            # Age vs Total Revenue Frequency Polygon by Gender
+            bin_width = 5
+            filtered_customer_metrics['age_bin'] = (filtered_customer_metrics['age'] // bin_width) * bin_width
+            # Group by age_bin and gender, sum total revenue
+            revenue_df = (
+                filtered_customer_metrics
+                .groupby(['age_bin', 'gender'])['total_revenue']
+                .sum()
+                .reset_index()
+            )
+            fig_revenue_poly = px.line(
+                revenue_df,
+                x='age_bin',
+                y='total_revenue',
+                color='gender',
+                markers=True,
+                title="Total Revenue by Age and Gender",
+                labels={'age_bin': 'Age', 'total_revenue': 'Total Revenue'}
+            )
+            fig_revenue_poly.update_traces(mode='lines+markers')
+            st.plotly_chart(fig_revenue_poly, use_container_width=True, key="age_revenue_polygon")
             
             # 3. Customer Segment Performance Dashboard
             st.subheader("Segment Performance Metrics")
@@ -416,19 +442,21 @@ with tab2:
                 df_with_first_order['first_order_date'].dt.to_period('M')
             )
             
+            df_with_first_order['customer_type'] = df_with_first_order['is_new_customer'].map({True: 'New', False: 'Returning'})
+            
             monthly_new_returning = df_with_first_order.groupby([
                 pd.Grouper(key='order_date', freq='M'),
-                'is_new_customer'
+                'customer_type'
             ])['CID'].nunique().reset_index()
             
             fig_timeline = px.bar(
                 monthly_new_returning, 
                 x='order_date', 
                 y='CID',
-                color='is_new_customer',
+                color='customer_type',
                 title="New vs Returning Customers Over Time",
-                labels={'CID': 'Number of Customers', 'is_new_customer': 'Customer Type'},
-                color_discrete_map={True: '#FF6B6B', False: '#4ECDC4'}
+                labels={'CID': 'Number of Customers', 'customer_type': 'Customer Type'},
+                color_discrete_map={'New': '#FF6B6B', 'Returning': '#4ECDC4'}
             )
             
             fig_timeline.update_layout(height=400)
@@ -456,37 +484,70 @@ with tab3:
         
         with col1:
             try:
+                # Only display one Profit Margin by Category chart
                 margin_by_cat = filtered_df.groupby('CAT')['Margin'].mean().reset_index()
                 fig = px.bar(margin_by_cat, x='CAT', y='Margin',
                              title="Profit Margin by Category",
                              color='Margin', color_continuous_scale='RdYlGn')
-                st.plotly_chart(fig, use_container_width=True)
+                fig.update_layout(
+                    title={
+                        'text': "Profit Margin by Category",
+                        'x': 0.5,
+                        'xanchor': 'center'
+                    }
+                )
+                st.plotly_chart(fig, use_container_width=True, key="margin_chart")
             except Exception as e:
                 st.error(f"Error creating margin chart: {e}")
         
-        with col2:
-            try:
-                fig = px.sunburst(filtered_df, path=['CAT', 'SUBCAT', 'prd_nm'], 
-                                  values='Revenue', title="Product Hierarchy")
-                st.plotly_chart(fig, use_container_width=True)
-            except Exception as e:
-                st.error(f"Error creating sunburst chart: {e}")
-        
+        # Add dropdown filter for Sunburst chart
+        sunburst_cats = sorted(filtered_df['CAT'].dropna().unique())
+        selected_sunburst_cat = st.selectbox("Select Category for Sunburst", options=["All"] + sunburst_cats, index=0, key="sunburst_cat")
+        if selected_sunburst_cat != "All":
+            sunburst_df = filtered_df[filtered_df['CAT'] == selected_sunburst_cat]
+        else:
+            sunburst_df = filtered_df
+
+        # Move Sunburst chart below the dropdown, outside of columns
         try:
-            # Select only numeric columns for parallel coordinates
+            fig_sunburst = px.sunburst(sunburst_df, path=['CAT', 'SUBCAT', 'prd_nm'], 
+                                      values='Revenue', title="Product Hierarchy")
+            st.plotly_chart(fig_sunburst, use_container_width=True, key="sunburst_chart")
+        except Exception as e:
+            st.error(f"Error creating sunburst chart: {e}")
+
+        # Dropdown to select visualization type for Product Characteristics
+        chart_type = st.selectbox("Select Product Characteristics Visualization", ["Bubble Plot", "Parallel Coordinates"])
+        try:
             numeric_cols = ['prd_cost', 'sls_price', 'Margin', 'sls_quantity']
             available_cols = [col for col in numeric_cols if col in filtered_df.columns]
-            
             if len(available_cols) >= 2:
-                fig = px.parallel_coordinates(filtered_df.dropna(subset=available_cols),
-                                              dimensions=available_cols,
-                                              color='prd_cost',
-                                              title="Product Characteristics Analysis")
-                st.plotly_chart(fig, use_container_width=True)
+                if chart_type == "Bubble Plot":
+                    # Bubble plot: x=sls_price, y=Margin, size=sls_quantity, color=prd_cost
+                    fig_bubble = px.scatter(
+                        filtered_df.dropna(subset=['sls_price', 'Margin', 'sls_quantity', 'prd_cost']),
+                        x='sls_price', y='Margin',
+                        size='sls_quantity', color='prd_cost',
+                        hover_name='prd_nm',
+                        title="Product Characteristics",
+                        color_continuous_scale='Blues',
+                        size_max=30
+                    )
+                    st.plotly_chart(fig_bubble, use_container_width=True, key="bubble_chart")
+                else:
+                    # Parallel Coordinates
+                    fig_parallel = px.parallel_coordinates(
+                        filtered_df.dropna(subset=available_cols),
+                        dimensions=available_cols,
+                        color='prd_cost',
+                        title="Product Characteristics",
+                        color_continuous_scale=px.colors.sequential.Blues
+                    )
+                    st.plotly_chart(fig_parallel, use_container_width=True, key="parallel_chart")
             else:
-                st.info("Insufficient numeric data for parallel coordinates chart.")
+                st.info("Insufficient numeric data for selected chart.")
         except Exception as e:
-            st.error(f"Error creating parallel coordinates chart: {e}")
+            st.error(f"Error creating product characteristics chart: {e}")
         
         st.markdown('</div>', unsafe_allow_html=True)
     else:
