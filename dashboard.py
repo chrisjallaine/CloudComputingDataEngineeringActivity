@@ -36,7 +36,7 @@ def load_assets():
 st.set_page_config(
     page_title="Wowowowow Sales Dashboard",
     layout="wide",
-    page_icon="📊",
+    page_icon="💲",
     initial_sidebar_state="expanded"
 )
 
@@ -101,14 +101,53 @@ df = load_data()
 
 # Custom title with animation
 st.markdown("""
-    <h1 style="text-align: center; padding: 1rem 0; position: sticky; top: 0; 
-               background: linear-gradient(180deg, #f8f9fa 90%, transparent); 
-               z-index: 1000; transition: opacity 0.3s ease;">
-        WowowowoW Sales Dashboard
-        <div style="height: 2px; background: linear-gradient(90deg, #6c5ce7 0%, #a66efa 100%); 
-                    width: 60px; margin: 0.5rem auto;"></div>
-    </h1>
+    <style>
+        @keyframes fadeInSlide {
+            0% {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .custom-title {
+            text-align: center;
+            padding: 1.5rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background: linear-gradient(180deg, #f8f9fa 90%, transparent);
+            animation: fadeInSlide 1s ease-out;
+        }
+
+        .custom-title h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 0;
+            background: linear-gradient(90deg, #6c5ce7, #a66efa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .custom-underline {
+            height: 3px;
+            background: linear-gradient(90deg, #6c5ce7 0%, #a66efa 100%);
+            width: 80px;
+            margin: 0.75rem auto 0;
+            border-radius: 4px;
+            animation: fadeInSlide 1.2s ease-out;
+        }
+    </style>
+
+    <div class="custom-title">
+        <h1>Wowowowow Sales Dashboard</h1>
+        <div class="custom-underline"></div>
+    </div>
 """, unsafe_allow_html=True)
+
 
 # Sidebar filters
 with st.sidebar:
@@ -199,7 +238,7 @@ with tab2:
     if not filtered_df.empty:
         st.markdown('<div class="plot-container">', unsafe_allow_html=True)
         
-        # Enhanced Customer Analysis Section (REPLACEMENT)
+        # Enhanced Customer Analysis Section (SIMPLIFIED)
         try:
             # Calculate comprehensive customer metrics
             customer_metrics = filtered_df.groupby('CID').agg({
@@ -260,8 +299,8 @@ with tab2:
             
             customer_metrics['segment'] = customer_metrics.apply(get_customer_segment, axis=1)
             
-            # 1. Key Customer Insights (moved to top)
-            st.subheader("💎 Key Customer Insights")
+            # 1. Key Customer Insights
+            st.subheader("Key Customer Insights")
             col1, col2, col3, col4 = st.columns(4)
             
             with col1:
@@ -299,44 +338,84 @@ with tab2:
                     f"{repeat_customers} customers"
                 )
             
-            # 2. Customer Value Distribution Analysis
-            st.subheader("Advanced Customer Segmentation Analysis")
+            # 2. SIMPLIFIED VISUALIZATIONS
+            st.subheader("Customer Segmentation Analysis")
             
-            # Customer Journey Heatmap
             col1, col2 = st.columns(2)
             
             with col1:
-                # Customer Lifetime Value Distribution by Segment
-                fig_violin = px.violin(
-                    customer_metrics, 
+                # Customer Value by Segment (Bar Chart)
+                segment_value = customer_metrics.groupby('segment').agg({
+                    'total_revenue': 'mean',
+                    'CID': 'count'
+                }).reset_index().sort_values('total_revenue', ascending=False)
+                
+                fig_segment = px.bar(
+                    segment_value, 
                     x='segment', 
                     y='total_revenue',
-                    box=True,
-                    title="Customer Value Distribution by Segment",
+                    title="Average Customer Value by Segment",
+                    labels={'total_revenue': 'Avg Revenue per Customer ($)', 'segment': 'Customer Segment'},
                     color='segment',
-                    color_discrete_sequence=px.colors.qualitative.Set3
+                    color_discrete_sequence=px.colors.qualitative.Pastel
                 )
-                fig_violin.update_xaxes(tickangle=45)
-                fig_violin.update_layout(height=500, showlegend=False)
-                st.plotly_chart(fig_violin, use_container_width=True)
+                fig_segment.update_layout(showlegend=False)
+                st.plotly_chart(fig_segment, use_container_width=True)
+                
+                # Add small multiples for segment distribution
+                st.caption("Customer Distribution by Segment")
+                segment_counts = customer_metrics['segment'].value_counts().reset_index()
+                segment_counts.columns = ['segment', 'count']
+                segment_counts['pct'] = (segment_counts['count'] / segment_counts['count'].sum()) * 100
+                
+                # Display as metric cards
+                cols = st.columns(4)
+                for i, row in segment_counts.head(4).iterrows():
+                    with cols[i]:
+                        st.metric(
+                            label=row['segment'],
+                            value=f"{row['count']}",
+                            delta=f"{row['pct']:.1f}% of total"
+                        )
             
             with col2:
-                # Customer Age vs Revenue Analysis
-                fig_age = px.scatter(
-                    customer_metrics, 
-                    x='age', 
-                    y='total_revenue',
-                    color='gender',
-                    size='total_orders',
-                    title="👥 Age vs Revenue Analysis",
-                    trendline="ols",
-                    hover_data=['segment', 'categories_bought']
+                # Age vs Revenue (Binned Scatter Plot)
+                # Create age bins
+                customer_metrics['age_group'] = pd.cut(
+                    customer_metrics['age'],
+                    bins=[0, 20, 30, 40, 50, 60, 100],
+                    labels=['<20', '20-29', '30-39', '40-49', '50-59', '60+']
                 )
-                fig_age.update_layout(height=500)
+                
+                age_revenue = customer_metrics.groupby(['age_group', 'gender']).agg({
+                    'total_revenue': 'mean',
+                    'CID': 'count'
+                }).reset_index()
+                
+                fig_age = px.scatter(
+                    age_revenue,
+                    x='age_group',
+                    y='total_revenue',
+                    size='CID',
+                    color='gender',
+                    title="👥 Average Revenue by Age Group",
+                    labels={
+                        'total_revenue': 'Avg Revenue per Customer ($)',
+                        'age_group': 'Age Group',
+                        'CID': 'Number of Customers',
+                        'gender': 'Gender'
+                    },
+                    size_max=30
+                )
+                fig_age.update_traces(marker=dict(opacity=0.8, line=dict(width=1, color='DarkSlateGrey')))
                 st.plotly_chart(fig_age, use_container_width=True)
+                
+                # Add gender distribution insight
+                gender_dist = customer_metrics['gender'].value_counts(normalize=True).mul(100).round(1)
+                st.caption(f"Customer Gender Distribution: {gender_dist.to_dict()}")
             
-            # 3. Customer Segment Performance Dashboard
-            st.subheader("Segment Performance Metrics")
+            # 3. Customer Segment Performance Table
+            st.subheader("Segment Performance Summary")
             
             # Calculate segment statistics
             segment_stats = customer_metrics.groupby('segment').agg({
@@ -346,104 +425,51 @@ with tab2:
                 'total_orders': 'mean',
                 'recency_days': 'mean',
                 'profit_margin': 'mean'
-            }).round(2)
+            }).round(2).sort_values(('total_revenue', 'sum'), ascending=False)
             
-            # Flatten column names
-            segment_stats.columns = ['customer_count', 'avg_revenue', 'total_segment_revenue', 
-                                   'avg_order_value', 'avg_orders', 'avg_recency', 'avg_margin']
-            segment_stats = segment_stats.reset_index()
+            # Format the table
+            segment_stats.columns = ['Customer Count', 'Avg Revenue', 'Total Revenue', 
+                                   'Avg Order Value', 'Avg Orders', 'Avg Recency (days)', 'Avg Margin (%)']
             
-            # Create multi-metric visualization
-            fig_metrics = make_subplots(
-                rows=2, cols=2,
-                subplot_titles=('Revenue per Customer', 'Average Order Value', 
-                              'Purchase Frequency', 'Profit Margin %'),
-                specs=[[{"secondary_y": False}, {"secondary_y": False}],
-                       [{"secondary_y": False}, {"secondary_y": False}]]
+            # Display as a styled table
+            st.dataframe(
+                segment_stats.style
+                .background_gradient(subset=['Total Revenue'], cmap='Blues')
+                .background_gradient(subset=['Avg Margin (%)'], cmap='RdYlGn')
+                .format({
+                    'Avg Revenue': "${:,.0f}",
+                    'Total Revenue': "${:,.0f}",
+                    'Avg Order Value': "${:,.0f}",
+                    'Avg Margin (%)': "{:.1f}%"
+                }),
+                use_container_width=True
             )
-            
-            # Add traces
-            fig_metrics.add_trace(
-                go.Bar(x=segment_stats['segment'], y=segment_stats['avg_revenue'], 
-                       name='Avg Revenue', marker_color='lightblue'),
-                row=1, col=1
-            )
-            
-            fig_metrics.add_trace(
-                go.Bar(x=segment_stats['segment'], y=segment_stats['avg_order_value'], 
-                       name='Avg Order Value', marker_color='lightgreen'),
-                row=1, col=2
-            )
-            
-            fig_metrics.add_trace(
-                go.Bar(x=segment_stats['segment'], y=segment_stats['avg_orders'], 
-                       name='Avg Orders', marker_color='salmon'),
-                row=2, col=1
-            )
-            
-            fig_metrics.add_trace(
-                go.Bar(x=segment_stats['segment'], y=segment_stats['avg_margin'], 
-                       name='Avg Margin %', marker_color='gold'),
-                row=2, col=2
-            )
-            
-            fig_metrics.update_xaxes(tickangle=45)
-            fig_metrics.update_layout(
-                height=600, 
-                showlegend=False,
-                title_text="Customer Segment Performance Dashboard"
-            )
-            
-            st.plotly_chart(fig_metrics, use_container_width=True)
-            
-            # 4. Customer Journey Timeline
-            st.subheader("Customer Purchase Patterns")
-            
-            # Monthly customer acquisition and retention
-            monthly_customers = filtered_df.groupby([
-                pd.Grouper(key='order_date', freq='M'),
-                'CID'
-            ]).size().reset_index().groupby('order_date')['CID'].nunique().reset_index()
-            monthly_customers.columns = ['month', 'active_customers']
-            
-            # Calculate new vs returning customers
-            customer_first_order = filtered_df.groupby('CID')['order_date'].min().reset_index()
-            customer_first_order.columns = ['CID', 'first_order_date']
-            
-            df_with_first_order = filtered_df.merge(customer_first_order, on='CID')
-            df_with_first_order['is_new_customer'] = (
-                df_with_first_order['order_date'].dt.to_period('M') == 
-                df_with_first_order['first_order_date'].dt.to_period('M')
-            )
-            
-            monthly_new_returning = df_with_first_order.groupby([
-                pd.Grouper(key='order_date', freq='M'),
-                'is_new_customer'
-            ])['CID'].nunique().reset_index()
-            
-            fig_timeline = px.bar(
-                monthly_new_returning, 
-                x='order_date', 
-                y='CID',
-                color='is_new_customer',
-                title="New vs Returning Customers Over Time",
-                labels={'CID': 'Number of Customers', 'is_new_customer': 'Customer Type'},
-                color_discrete_map={True: '#FF6B6B', False: '#4ECDC4'}
-            )
-            
-            fig_timeline.update_layout(height=400)
-            st.plotly_chart(fig_timeline, use_container_width=True)
             
         except Exception as e:
-            st.error(f"Error creating enhanced customer analysis: {e}")
-            # Fallback to original visualization
+            st.error(f"Error creating customer analysis: {e}")
+            # Fallback to very simple visualizations
             try:
-                fig = px.violin(filtered_df, y='customer_age', x='GEN', 
-                                box=True, points="all",
-                                title="👥 Age Distribution by Gender")
-                st.plotly_chart(fig, use_container_width=True)
+                st.subheader("Basic Customer Analysis")
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    age_dist = px.histogram(
+                        filtered_df, 
+                        x='customer_age',
+                        title="Customer Age Distribution",
+                        nbins=20
+                    )
+                    st.plotly_chart(age_dist, use_container_width=True)
+                
+                with col2:
+                    gender_dist = px.pie(
+                        filtered_df, 
+                        names='GEN',
+                        title="Customer Gender Distribution"
+                    )
+                    st.plotly_chart(gender_dist, use_container_width=True)
             except Exception as e2:
-                st.error(f"Error creating fallback chart: {e2}")
+                st.error(f"Error creating fallback charts: {e2}")
         
         st.markdown('</div>', unsafe_allow_html=True)
     else:
@@ -466,27 +492,71 @@ with tab3:
         
         with col2:
             try:
-                fig = px.sunburst(filtered_df, path=['CAT', 'SUBCAT', 'prd_nm'], 
-                                  values='Revenue', title="Product Hierarchy")
+                # Simple stacked bar chart showing revenue by category and subcategory
+                cat_subcat_rev = filtered_df.groupby(['CAT', 'SUBCAT'])['Revenue'].sum().reset_index()
+                fig = px.bar(cat_subcat_rev, 
+                             x='CAT', 
+                             y='Revenue',
+                             color='SUBCAT',
+                             title="Revenue by Category & Subcategory",
+                             labels={'Revenue': 'Total Revenue ($)'})
                 st.plotly_chart(fig, use_container_width=True)
             except Exception as e:
-                st.error(f"Error creating sunburst chart: {e}")
+                st.error(f"Error creating product hierarchy chart: {e}")
         
         try:
-            # Select only numeric columns for parallel coordinates
-            numeric_cols = ['prd_cost', 'sls_price', 'Margin', 'sls_quantity']
-            available_cols = [col for col in numeric_cols if col in filtered_df.columns]
+            # Top products table - simple and effective
+            st.subheader("Top Performing Products")
+            top_products = filtered_df.groupby('prd_nm').agg({
+                'Revenue': 'sum',
+                'Margin': 'mean',
+                'sls_quantity': 'sum'
+            }).nlargest(10, 'Revenue').reset_index()
             
-            if len(available_cols) >= 2:
-                fig = px.parallel_coordinates(filtered_df.dropna(subset=available_cols),
-                                              dimensions=available_cols,
-                                              color='prd_cost',
-                                              title="Product Characteristics Analysis")
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("Insufficient numeric data for parallel coordinates chart.")
+            # Format the numbers nicely
+            top_products['Revenue'] = top_products['Revenue'].apply(lambda x: f"${x:,.0f}")
+            top_products['Margin'] = top_products['Margin'].apply(lambda x: f"{x:.1f}%")
+            top_products['sls_quantity'] = top_products['sls_quantity'].apply(lambda x: f"{x:,.0f}")
+            
+            st.dataframe(
+                top_products,
+                column_config={
+                    "prd_nm": "Product Name",
+                    "Revenue": "Total Revenue",
+                    "Margin": "Avg Margin",
+                    "sls_quantity": "Units Sold"
+                },
+                hide_index=True,
+                use_container_width=True
+            )
+            
+            # Product performance scatter plot
+            st.subheader("Product Performance Analysis")
+            product_performance = filtered_df.groupby('prd_nm').agg({
+                'Revenue': 'sum',
+                'Margin': 'mean',
+                'sls_quantity': 'sum'
+            }).reset_index()
+            
+            fig = px.scatter(
+                product_performance,
+                x='sls_quantity',
+                y='Revenue',
+                size='Margin',
+                color='Margin',
+                hover_name='prd_nm',
+                title="Product Performance: Quantity vs Revenue (Size = Margin)",
+                labels={
+                    'sls_quantity': 'Units Sold',
+                    'Revenue': 'Total Revenue',
+                    'Margin': 'Profit Margin (%)'
+                },
+                color_continuous_scale='RdYlGn'
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            
         except Exception as e:
-            st.error(f"Error creating parallel coordinates chart: {e}")
+            st.error(f"Error creating product performance visualizations: {e}")
         
         st.markdown('</div>', unsafe_allow_html=True)
     else:
@@ -522,16 +592,61 @@ with tab4:
                 st.error(f"Error creating order density chart: {e}")
         
         try:
+            # Simple bar charts for each metric by country
             metrics = filtered_df.groupby('CNTRY').agg({
                 'order_to_ship_days': 'mean',
                 'ship_delay': 'mean',
                 'Margin': 'mean'
             }).reset_index()
-            fig = px.line_polar(metrics, r='order_to_ship_days', theta='CNTRY',
-                                line_close=True, title="Operational Metrics by Country")
-            st.plotly_chart(fig, use_container_width=True)
+            
+            st.subheader("Operational Metrics by Country")
+            
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                fig = px.bar(metrics, x='CNTRY', y='order_to_ship_days',
+                             title="Avg Order to Ship Days",
+                             color='order_to_ship_days',
+                             color_continuous_scale='Blues')
+                st.plotly_chart(fig, use_container_width=True)
+            
+            with col2:
+                fig = px.bar(metrics, x='CNTRY', y='ship_delay',
+                             title="Avg Ship Delay (Days)",
+                             color='ship_delay',
+                             color_continuous_scale='Reds')
+                st.plotly_chart(fig, use_container_width=True)
+            
+            with col3:
+                fig = px.bar(metrics, x='CNTRY', y='Margin',
+                             title="Avg Profit Margin (%)",
+                             color='Margin',
+                             color_continuous_scale='RdYlGn')
+                st.plotly_chart(fig, use_container_width=True)
+            
+            # Add a simple table for the metrics
+            st.subheader("Detailed Metrics by Country")
+            metrics_display = metrics.copy()
+            metrics_display['order_to_ship_days'] = metrics_display['order_to_ship_days'].round(1)
+            metrics_display['ship_delay'] = metrics_display['ship_delay'].round(1)
+            metrics_display['Margin'] = metrics_display['Margin'].round(1)
+            
+            st.dataframe(
+                metrics_display.style
+                .background_gradient(subset=['order_to_ship_days'], cmap='Blues')
+                .background_gradient(subset=['ship_delay'], cmap='Reds')
+                .background_gradient(subset=['Margin'], cmap='RdYlGn'),
+                column_config={
+                    "CNTRY": "Country",
+                    "order_to_ship_days": "Avg Ship Time (Days)",
+                    "ship_delay": "Avg Delay (Days)",
+                    "Margin": "Avg Margin (%)"
+                },
+                use_container_width=True
+            )
+            
         except Exception as e:
-            st.error(f"Error creating operational metrics chart: {e}")
+            st.error(f"Error creating operational metrics charts: {e}")
         
         st.markdown('</div>', unsafe_allow_html=True)
     else:
