@@ -79,9 +79,7 @@ def load_data():
         # Normalize gender values
         gender_map = {
             'MALE': 'Male',
-            'M': 'Male',
-            'FEMALE': 'Female',
-            'F': 'Female'
+            'FEMALE': 'Female'
         }
         df['GEN'] = df['GEN'].map(lambda x: gender_map.get(str(x).upper(), x))
 
