@@ -1,9 +1,11 @@
 /* static/styles.css */
 :root {
-    --primary: #2c3e50;
-    --secondary: #3d4d9e;
-    --background: #f8f9fa;
-    --card-bg: #ffffff;
+    --primary: #1e3a8a;        /* Deep blue */
+    --secondary: #3b82f6;      /* Medium blue */
+    --background: #f1f5f9;     /* Very light blue-gray */
+    --card-bg: #ffffff;        /* Pure white for contrast */
+    --accent: #60a5fa;         /* Light blue accent */
+    --border: #cbd5e1;         /* Light blue-gray border */
 }
 
 /* Base styles */
@@ -17,14 +19,14 @@
     background: var(--card-bg);
     border-radius: 10px;
     padding: 1.5rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 8px rgba(30, 58, 138, 0.1);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    border: 1px solid rgba(0,0,0,0.05);
+    border: 1px solid var(--border);
 }
 
 [data-testid="metric-container"]:hover {
     transform: translateY(-3px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
 }
 
 /* Charts container */
@@ -33,13 +35,13 @@
     border-radius: 12px;
     padding: 1rem;
     margin: 1rem 0;
-    border: 1px solid rgba(0,0,0,0.05);
+    border: 1px solid var(--border);
 }
 
 /* Sidebar customization */
 [data-testid="stSidebar"] {
     background: var(--background) !important;
-    border-right: 1px solid #e0e0e0;
+    border-right: 1px solid var(--border);
 }
 
 /* Tabs customization */
@@ -52,11 +54,11 @@
     padding: 0.75rem 1.5rem !important;
     border-radius: 8px !important;
     transition: all 0.2s !important;
-    background: rgba(108, 94, 231, 0.1) !important;
+    background: rgba(96, 165, 250, 0.1) !important;
 }
 
 [data-baseweb="tab"]:hover {
-    background: rgba(108, 94, 231, 0.2) !important;
+    background: rgba(96, 165, 250, 0.2) !important;
 }
 
 [aria-selected="true"] {
