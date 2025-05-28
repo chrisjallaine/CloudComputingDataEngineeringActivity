@@ -273,7 +273,7 @@ with tab2:
                 .astype(str)
                 .str.strip()
                 .str.upper()
-                .map({'MALE': 'Male', 'M': 'Male', 'FEMALE': 'Female', 'F': 'Female'})
+                .map({'MALE': 'Male', 'FEMALE': 'Female'})
                 .fillna('Other')
             )
             # Optional: print unique values for debugging
