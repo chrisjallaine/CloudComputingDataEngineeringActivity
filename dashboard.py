@@ -13,6 +13,24 @@ import numpy as np
 BASE_DIR = Path(__file__).parent
 STATIC_DIR = BASE_DIR / "static"
 
+# Define consistent blue color palette
+BLUE_COLORS = {
+    'primary': '#1e3a8a',      # Deep blue
+    'secondary': '#3b82f6',    # Medium blue
+    'accent': '#60a5fa',       # Light blue
+    'light': '#93c5fd',        # Very light blue
+    'dark': '#1e40af',         # Dark blue
+    'gradient': ['#1e3a8a', '#3b82f6', '#60a5fa', '#93c5fd', '#dbeafe']
+}
+
+# Blue color scales for different chart types
+BLUE_SCALES = {
+    'continuous': 'Blues',
+    'discrete': ['#1e3a8a', '#3b82f6', '#60a5fa', '#93c5fd', '#dbeafe', '#1e40af', '#2563eb', '#3730a3'],
+    'sequential': ['#f0f9ff', '#e0f2fe', '#bae6fd', '#7dd3fc', '#38bdf8', '#0ea5e9', '#0284c7', '#0369a1', '#075985', '#0c4a6e']
+}
+
+
 def load_assets():
     """Load CSS and JavaScript files"""
     try:
@@ -107,12 +125,12 @@ def load_data():
 df = load_data()
 
 # Custom title with animation
-st.markdown("""
+st.markdown(f"""
     <h1 style="text-align: center; padding: 1rem 0; position: sticky; top: 0; 
                background: linear-gradient(180deg, #f8f9fa 90%, transparent); 
                z-index: 1000; transition: opacity 0.3s ease;">
         WowowowoW Sales Dashboard
-        <div style="height: 2px; background: linear-gradient(90deg, #6c5ce7 0%, #a66efa 100%); 
+        <div style="height: 2px; background: linear-gradient(90deg, {BLUE_COLORS['primary']} 0%, {BLUE_COLORS['secondary']} 100%); 
                     width: 60px; margin: 0.5rem auto;"></div>
     </h1>
 """, unsafe_allow_html=True)
@@ -174,7 +192,8 @@ with tab1:
                 # Fixed resample method - use set_index approach
                 monthly_rev = filtered_df.set_index('order_date').resample('M')['Revenue'].sum().reset_index()
                 fig = px.line(monthly_rev, x='order_date', y='Revenue', 
-                              title="Monthly Revenue Trend", markers=True)
+                              title="Monthly Revenue Trend", markers=True,
+                              color_discrete_sequence=[BLUE_COLORS['primary']])
                 st.plotly_chart(fig, use_container_width=True)
             except Exception as e:
                 st.error(f"Error creating monthly revenue chart: {e}")
@@ -184,7 +203,7 @@ with tab1:
                 country_rev = filtered_df.groupby('CNTRY')['Revenue'].sum().nlargest(10).reset_index()
                 fig = px.bar(country_rev, x='CNTRY', y='Revenue', 
                              title="Top 6 Countries by Revenue",
-                             color='Revenue', color_continuous_scale='Blues')
+                             color='Revenue', color_continuous_scale=BLUE_SCALES['continuous'])
                 st.plotly_chart(fig, use_container_width=True)
             except Exception as e:
                 st.error(f"Error creating country revenue chart: {e}")
@@ -193,7 +212,8 @@ with tab1:
             # Fixed category trend - use groupby with pd.Grouper
             category_trend = filtered_df.groupby([pd.Grouper(key='order_date', freq='M'), 'CAT'])['Revenue'].sum().reset_index()
             fig = px.area(category_trend, x='order_date', y='Revenue', 
-                          color='CAT', title="Revenue Trend by Category")
+                          color='CAT', title="Revenue Trend by Category",
+                          color_discrete_sequence=BLUE_SCALES['discrete'])
             st.plotly_chart(fig, use_container_width=True)
         except Exception as e:
             st.error(f"Error creating category trend chart: {e}")
@@ -331,7 +351,7 @@ with tab2:
                 box=True,
                 title="Customer Value Distribution by Segment",
                 color='segment',
-                color_discrete_sequence=px.colors.qualitative.Set3
+                color_discrete_sequence=BLUE_SCALES['discrete']
             )
             fig_violin.update_xaxes(tickangle=45)
             fig_violin.update_layout(height=500, showlegend=False)
@@ -354,7 +374,8 @@ with tab2:
                 color='gender',
                 markers=True,
                 title="Total Revenue by Age and Gender",
-                labels={'age_bin': 'Age', 'total_revenue': 'Total Revenue'}
+                labels={'age_bin': 'Age', 'total_revenue': 'Total Revenue'},
+                color_discrete_sequence=[BLUE_COLORS['primary'], BLUE_COLORS['accent']]
             )
             fig_revenue_poly.update_traces(mode='lines+markers')
             st.plotly_chart(fig_revenue_poly, use_container_width=True, key="age_revenue_polygon")
@@ -389,25 +410,25 @@ with tab2:
             # Add traces
             fig_metrics.add_trace(
                 go.Bar(x=segment_stats['segment'], y=segment_stats['avg_revenue'], 
-                       name='Avg Revenue', marker_color='lightblue'),
+                       name='Avg Revenue', marker_color=BLUE_COLORS['primary']),
                 row=1, col=1
             )
             
             fig_metrics.add_trace(
                 go.Bar(x=segment_stats['segment'], y=segment_stats['avg_order_value'], 
-                       name='Avg Order Value', marker_color='lightgreen'),
+                       name='Avg Order Value', marker_color=BLUE_COLORS['secondary']),
                 row=1, col=2
             )
             
             fig_metrics.add_trace(
                 go.Bar(x=segment_stats['segment'], y=segment_stats['avg_orders'], 
-                       name='Avg Orders', marker_color='salmon'),
+                       name='Avg Orders', marker_color=BLUE_COLORS['accent']),
                 row=2, col=1
             )
             
             fig_metrics.add_trace(
                 go.Bar(x=segment_stats['segment'], y=segment_stats['avg_margin'], 
-                       name='Avg Margin %', marker_color='gold'),
+                       name='Avg Margin %', marker_color=BLUE_COLORS['light']),
                 row=2, col=2
             )
             
@@ -454,7 +475,7 @@ with tab2:
                 color='customer_type',
                 title="New vs Returning Customers Over Time",
                 labels={'CID': 'Number of Customers', 'customer_type': 'Customer Type'},
-                color_discrete_map={'New': '#FF6B6B', 'Returning': '#4ECDC4'}
+                color_discrete_map={'New': BLUE_COLORS['primary'], 'Returning': BLUE_COLORS['secondary']}
             )
             
             fig_timeline.update_layout(height=400)
@@ -466,7 +487,8 @@ with tab2:
             try:
                 fig = px.violin(filtered_df, y='customer_age', x='GEN', 
                                 box=True, points="all",
-                                title="Age Distribution by Gender")
+                                title="Age Distribution by Gender",
+                                color_discrete_sequence=BLUE_SCALES['discrete'])
                 st.plotly_chart(fig, use_container_width=True)
             except Exception as e2:
                 st.error(f"Error creating fallback chart: {e2}")
@@ -486,7 +508,7 @@ with tab3:
                 margin_by_cat = filtered_df.groupby('CAT')['Margin'].mean().reset_index()
                 fig = px.bar(margin_by_cat, x='CAT', y='Margin',
                              title="Profit Margin by Category",
-                             color='Margin', color_continuous_scale='RdYlGn')
+                             color='Margin', color_continuous_scale=BLUE_SCALES['continuous'])
                 fig.update_layout(
                     title={
                         'text': "Profit Margin by Category",
@@ -509,7 +531,8 @@ with tab3:
         # Move Sunburst chart below the dropdown, outside of columns
         try:
             fig_sunburst = px.sunburst(sunburst_df, path=['CAT', 'SUBCAT', 'prd_nm'], 
-                                      values='Revenue', title="Product Hierarchy")
+                                      values='Revenue', title="Product Hierarchy",
+                                      color_discrete_sequence=BLUE_SCALES['discrete'])
             st.plotly_chart(fig_sunburst, use_container_width=True, key="sunburst_chart")
         except Exception as e:
             st.error(f"Error creating sunburst chart: {e}")
@@ -528,7 +551,7 @@ with tab3:
                         size='sls_quantity', color='prd_cost',
                         hover_name='prd_nm',
                         title="Product Characteristics",
-                        color_continuous_scale='Blues',
+                        color_continuous_scale=BLUE_SCALES['continuous'],
                         size_max=30
                     )
                     st.plotly_chart(fig_bubble, use_container_width=True, key="bubble_chart")
@@ -539,7 +562,7 @@ with tab3:
                         dimensions=available_cols,
                         color='prd_cost',
                         title="Product Characteristics",
-                        color_continuous_scale=px.colors.sequential.Blues
+                        color_continuous_scale=BLUE_SCALES['sequential']
                     )
                     st.plotly_chart(fig_parallel, use_container_width=True, key="parallel_chart")
             else:
@@ -561,7 +584,8 @@ with tab4:
                 fulfillment = filtered_df.groupby(['MAINTENANCE', 'CAT'])['order_to_ship_days'].mean().reset_index()
                 fig = px.bar(fulfillment, x='CAT', y='order_to_ship_days',
                              color='MAINTENANCE', barmode='stack',
-                             title="Average Fulfillment Time by Category")
+                             title="Average Fulfillment Time by Category",
+                             color_discrete_sequence=BLUE_SCALES['discrete'])
                 st.plotly_chart(fig, use_container_width=True)
             except Exception as e:
                 st.error(f"Error creating fulfillment chart: {e}")
@@ -575,7 +599,8 @@ with tab4:
                 
                 fig = px.density_heatmap(daily_orders, x='weekday', y='month',
                                          z='sls_ord_num', 
-                                         title="Order Density Calendar")
+                                         title="Order Density Calendar",
+                                         color_continuous_scale=BLUE_SCALES['sequential'])
                 st.plotly_chart(fig, use_container_width=True)
             except Exception as e:
                 st.error(f"Error creating order density chart: {e}")
@@ -587,7 +612,8 @@ with tab4:
                 'Margin': 'mean'
             }).reset_index()
             fig = px.line_polar(metrics, r='order_to_ship_days', theta='CNTRY',
-                                line_close=True, title="Operational Metrics by Country")
+                                line_close=True, title="Operational Metrics by Country",
+                                color_discrete_sequence=[BLUE_COLORS['primary']])
             st.plotly_chart(fig, use_container_width=True)
         except Exception as e:
             st.error(f"Error creating operational metrics chart: {e}")
