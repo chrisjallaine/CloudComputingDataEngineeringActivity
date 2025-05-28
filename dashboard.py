@@ -119,7 +119,7 @@ st.markdown("""
 
 # Sidebar filters
 with st.sidebar:
-    st.header("🔍 Filters")
+    st.header("Filters")
     # Use display dates for filters but convert back to datetime for filtering
     min_date = df['order_date'].dt.date.min() if not df.empty else datetime.now().date()
     max_date = df['order_date'].dt.date.max() if not df.empty else datetime.now().date()
@@ -280,14 +280,14 @@ with tab2:
             print("Unique gender values:", customer_metrics['gender'].unique())
             
             # 1. Key Customer Insights (moved to top)
-            st.subheader("💎 Key Customer Insights")
+            st.subheader("Key Customer Insights")
             col1, col2, col3, col4 = st.columns(4)
             
             with col1:
                 champions_count = len(customer_metrics[customer_metrics['segment'] == 'Champions'])
                 champions_revenue = customer_metrics[customer_metrics['segment'] == 'Champions']['total_revenue'].sum()
                 st.metric(
-                    "🏆 Champions", 
+                    "Champions", 
                     f"{champions_count}",
                     f"${champions_revenue:,.0f} Revenue"
                 )
@@ -466,7 +466,7 @@ with tab2:
             try:
                 fig = px.violin(filtered_df, y='customer_age', x='GEN', 
                                 box=True, points="all",
-                                title="👥 Age Distribution by Gender")
+                                title="Age Distribution by Gender")
                 st.plotly_chart(fig, use_container_width=True)
             except Exception as e2:
                 st.error(f"Error creating fallback chart: {e2}")
